@@ -6,8 +6,8 @@ const client = new Anthropic()
 export interface AgentInput {
   jobDescription: string
   cvText: string
-  transcriptText: string | null
-  recruiterNotes: string | null
+  transcriptText?: string | null
+  recruiterNotes?: string | null
 }
 
 export interface AgentOutput {
@@ -16,67 +16,64 @@ export interface AgentOutput {
   draft_message: string
 }
 
-export async function runEvaluationAgent(
-  input: AgentInput
-): Promise<AgentOutput> {
-  const { jobDescription, cvText, transcriptText, recruiterNotes } = input
-
-  if (!jobDescription || !cvText) {
-    throw new Error('Job description and CV are required for evaluation.')
-  }
-
-  const prompt = `You are evaluating a job candidate against a role's requirements on behalf of a recruiter.
+const SYSTEM_PROMPT = `You are evaluating a job candidate against a role's requirements on behalf of a recruiter.
 
 You have been given:
 - Job description (defines the requirements)
 - CV (candidate's stated experience)
-- Interview transcript (what the candidate actually said)
-- Recruiter notes (the recruiter's observations)
+- Interview transcript (what the candidate actually said, if available)
+- Recruiter notes (the recruiter's observations, if available)
 
-Your job is to produce three outputs:
+Produce three outputs:
 
-1. EVALUATION: A structured assessment of how the candidate maps to the role requirements. Name specific strengths. Name specific gaps. Be precise. Do not generalise. Reference actual content from the inputs.
+1. EVALUATION: Structured assessment of how the candidate maps to requirements. Name specific strengths with evidence. Name specific gaps with evidence. Be precise. Reference actual content from the inputs.
 
-2. EVIDENCE STATEMENT: A plain statement of what data was used in the assessment. Format: "We assessed [X]. We found [Y]. The gap was [Z]." One to three sentences. Not a score. A statement of evidence.
+2. EVIDENCE STATEMENT: Plain statement of what data was used. Format: "We assessed [X]. We found [Y]. The gap was [Z]." One to three sentences. Not a score. If the interview transcript was not provided, state that explicitly in this field.
 
-3. DRAFT MESSAGE: A rejection message to send to the candidate. Requirements:
-   - Direct and respectful
-   - References at least one specific strength from the evaluation
-   - Names the primary gap plainly
-   - No template language. The following phrases are banned — do not use them or close variations:
-${BANNED_PHRASES.map(p => `     · "${p}"`).join('\n')}
-   - The following structural constructions are also banned:
-${BANNED_CONSTRUCTIONS.map(c => `     · ${c}`).join('\n')}
-   - If a decision statement is needed, use "After reviewing everything, we don't think this is the right match."
-   - Signed off as coming from the recruiter (use "we" not "I")
-   - Maximum 150 words
+3. DRAFT MESSAGE: Rejection message to send to the candidate. Requirements:
+- Direct and respectful
+- References at least one specific strength
+- Names the primary gap plainly
+- Maximum 150 words
+- Signs off as "we" not "I"
 
-Return valid JSON only. No preamble. No markdown. Schema:
-{
-  "evaluation": "string",
-  "evidence_statement": "string",
-  "draft_message": "string"
-}
+BANNED PHRASES — never use any of these or close variations:
+${BANNED_PHRASES.map(p => `- "${p}"`).join('\n')}
 
----
+BANNED CONSTRUCTIONS — never use any of these:
+${BANNED_CONSTRUCTIONS.map(c => `- ${c}`).join('\n')}
 
-JOB DESCRIPTION:
+Return valid JSON only. No preamble. No markdown fences. Schema:
+{"evaluation":"string","evidence_statement":"string","draft_message":"string"}`
+
+export async function runEvaluationAgent(input: AgentInput): Promise<AgentOutput> {
+  const { jobDescription, cvText, transcriptText, recruiterNotes } = input
+
+  if (!jobDescription?.trim()) {
+    throw new Error('Job description is required for evaluation')
+  }
+  if (!cvText?.trim()) {
+    throw new Error('CV text is required for evaluation')
+  }
+
+  const userMessage = `JOB DESCRIPTION:
 ${jobDescription}
 
 CV:
 ${cvText}
 
 INTERVIEW TRANSCRIPT:
-${transcriptText ?? 'Not provided.'}
+${transcriptText?.trim() || 'Not provided.'}
 
 RECRUITER NOTES:
-${recruiterNotes ?? 'Not provided.'}`
+${recruiterNotes?.trim() || 'Not provided.'}`
 
   const message = await client.messages.create(
     {
       model: 'claude-sonnet-4-5',
       max_tokens: 1500,
-      messages: [{ role: 'user', content: prompt }],
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
     },
     { timeout: 45000 }
   )
@@ -87,14 +84,24 @@ ${recruiterNotes ?? 'Not provided.'}`
   }
 
   const rawText = content.text.trim()
-  const jsonText = rawText.startsWith('```')
-    ? rawText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
-    : rawText
 
-  const parsed: AgentOutput = JSON.parse(jsonText)
+  let parsed: AgentOutput
+  try {
+    parsed = JSON.parse(rawText) as AgentOutput
+  } catch {
+    throw new Error(
+      `Agent returned invalid JSON. Raw response: ${rawText.slice(0, 200)}`
+    )
+  }
 
-  if (!parsed.evaluation || !parsed.evidence_statement || !parsed.draft_message) {
-    throw new Error('Agent response missing required fields')
+  if (!parsed.evaluation?.trim()) {
+    throw new Error('Agent response missing evaluation field')
+  }
+  if (!parsed.evidence_statement?.trim()) {
+    throw new Error('Agent response missing evidence_statement field')
+  }
+  if (!parsed.draft_message?.trim()) {
+    throw new Error('Agent response missing draft_message field')
   }
 
   return parsed
