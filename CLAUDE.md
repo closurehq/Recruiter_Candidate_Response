@@ -59,7 +59,7 @@ Storage bucket: `candidate-files` (private, service role only)
 
 ## Auth model
 
-Flat shared secret. `ADMIN_SECRET` env var is injected as `x-admin-secret` header by `apiFetch()` in `lib/client.ts`, which reads it from `localStorage` key `admin_secret`. No login page exists — the secret must be set in localStorage manually before the app is usable. No multi-user, no sessions.
+Flat shared secret. `ADMIN_SECRET` env var is injected as `x-admin-secret` header by `apiFetch()` in `lib/client.ts`, which reads it from `localStorage` key `admin_secret`. `/login` presents a password field; on submit it probes `POST /api/roles` with an empty body — a `400` response confirms the secret is valid (auth passed, validation failed as expected), a `401` means wrong secret. On success the secret is written to `localStorage` and the user is redirected to `/`. `app/AuthGuard.tsx` runs on every route and redirects to `/login` if `localStorage` has no secret. No multi-user, no sessions.
 
 ## Env vars
 
@@ -86,33 +86,8 @@ npm run build      # production build
 npx tsc --noEmit   # type check
 ```
 
-## Known bugs
-
-### 1. lib/pdf.ts — wrong pdf-parse API (critical — blocks close flow for PDF candidates)
-
-`pdf-parse` v2 exports a default function, not a named class. The current code:
-
-```ts
-import { PDFParse } from 'pdf-parse'
-const parser = new PDFParse({ data: buffer })
-```
-
-`PDFParse` is `undefined` at runtime. Calling `new PDFParse(...)` throws `TypeError: PDFParse is not a constructor` for any candidate with a PDF CV or transcript. Plain text (`.txt`) candidates are unaffected.
-
-Fix:
-
-```ts
-import pdfParse from 'pdf-parse'
-
-export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const result = await pdfParse(buffer)
-  return result.text.trim()
-}
-```
-
 ## Known gaps
 
-- **No login UI** — `admin_secret` must be set in `localStorage` manually via browser console before the app is usable. A simple login form that writes to localStorage is the minimum needed.
 - **`getAnonClient()`** in `lib/supabase.ts` is exported but never called anywhere. Dead code until a public-facing feature is added.
 - **No test suite** — no test framework is configured. No unit or integration tests exist.
 
