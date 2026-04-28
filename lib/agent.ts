@@ -67,11 +67,14 @@ ${transcriptText ?? 'Not provided.'}
 RECRUITER NOTES:
 ${recruiterNotes ?? 'Not provided.'}`
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-  })
+  const message = await client.messages.create(
+    {
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    },
+    { timeout: 45000 }
+  )
 
   const content = message.content[0]
   if (content.type !== 'text') {
