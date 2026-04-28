@@ -88,7 +88,7 @@ Flat shared secret. `ADMIN_SECRET` env var is injected as `x-admin-secret` heade
 
 ## Cron
 
-`vercel.json` schedules `GET /api/cron/purge` daily at 03:00 UTC. Purges candidates (+ cascade to evaluations, audit_log, and storage files) older than 90 days. Protected by `CRON_SECRET`.
+`vercel.json` schedules `GET /api/cron/purge` daily at 02:00 UTC. Purges candidates (+ cascade to evaluations, audit_log, and storage files) older than 90 days. Protected by `CRON_SECRET`.
 
 ## Commands
 
