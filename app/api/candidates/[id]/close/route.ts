@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
 import { runEvaluationAgent } from '@/lib/agent'
-import { downloadFile } from '@/lib/upload'
-import { extractText } from '@/lib/pdf'
 
 export const maxDuration = 60
 
@@ -18,7 +16,6 @@ export async function POST(
   const { id } = await params
   const client = getServiceClient()
 
-  // Load candidate with role
   const { data: candidate, error: candError } = await client
     .from('candidates')
     .select('*, roles(job_description)')
@@ -29,16 +26,16 @@ export async function POST(
     return NextResponse.json({ error: 'Candidate not found' }, { status: 404 })
   }
 
-  if (candidate.status !== 'active') {
+  if (candidate.status !== 'active' && candidate.status !== 'pending-review') {
     return NextResponse.json(
-      { error: 'Candidate is already closed' },
+      { error: 'Candidate must be active or pending-review to close' },
       { status: 400 }
     )
   }
 
-  if (!candidate.cv_path) {
+  if (!candidate.cv_text) {
     return NextResponse.json(
-      { error: 'CV is required to close a candidate' },
+      { error: 'CV text is required — re-upload the CV to extract text' },
       { status: 400 }
     )
   }
@@ -52,30 +49,18 @@ export async function POST(
   }
 
   try {
-    // Extract text from CV
-    const cvBuffer = await downloadFile(candidate.cv_path)
-    const cvExt = candidate.cv_path.split('.').pop()?.toLowerCase()
-    const cvMime = cvExt === 'pdf' ? 'application/pdf' : 'text/plain'
-    const cvText = await extractText(cvBuffer, cvMime)
-
-    // Extract text from transcript if present
-    let transcriptText: string | null = null
-    if (candidate.transcript_path) {
-      const tBuffer = await downloadFile(candidate.transcript_path)
-      const tExt = candidate.transcript_path.split('.').pop()?.toLowerCase()
-      const tMime = tExt === 'pdf' ? 'application/pdf' : 'text/plain'
-      transcriptText = await extractText(tBuffer, tMime)
-    }
-
-    // Run agent
     const result = await runEvaluationAgent({
       jobDescription,
-      cvText,
-      transcriptText,
+      cvText: candidate.cv_text,
+      transcriptText: candidate.transcript_text ?? null,
       recruiterNotes: candidate.recruiter_notes ?? null,
     })
 
-    // Save evaluation
+    // Validate agent returned all required fields
+    if (!result.evaluation || !result.evidence_statement || !result.draft_message) {
+      throw new Error('Agent response missing required fields')
+    }
+
     const { data: evaluation, error: evalError } = await client
       .from('evaluations')
       .insert({
@@ -91,13 +76,11 @@ export async function POST(
       return NextResponse.json({ error: evalError.message }, { status: 500 })
     }
 
-    // Update candidate status
     await client
       .from('candidates')
-      .update({ status: 'closed' })
+      .update({ status: 'closed-pending' })
       .eq('id', id)
 
-    // Audit log
     await client.from('audit_log').insert({
       candidate_id: id,
       event: 'evaluation_generated',

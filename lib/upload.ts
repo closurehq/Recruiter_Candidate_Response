@@ -2,21 +2,17 @@ import { getServiceClient } from './supabase'
 
 const BUCKET = 'candidate-files'
 
-export async function uploadFile(
-  file: Buffer,
-  fileName: string,
-  mimeType: string
-): Promise<string> {
+export async function uploadFile(file: File, destinationPath: string): Promise<string> {
   const client = getServiceClient()
-  const path = `${Date.now()}-${fileName}`
+  const buffer = Buffer.from(await file.arrayBuffer())
 
   const { error } = await client.storage
     .from(BUCKET)
-    .upload(path, file, { contentType: mimeType })
+    .upload(destinationPath, buffer, { contentType: file.type })
 
   if (error) throw new Error(`Upload failed: ${error.message}`)
 
-  return path
+  return destinationPath
 }
 
 export async function deleteFile(path: string): Promise<void> {

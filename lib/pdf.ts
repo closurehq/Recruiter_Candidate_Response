@@ -1,13 +1,15 @@
-// Import from lib directly — pdf-parse v1's main entry runs test code on require()
-// which crashes in serverless environments. The lib file is the parser only.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (
-  buffer: Buffer
-) => Promise<{ text: string }>
+import { PDFParse } from 'pdf-parse'
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const result = await pdfParse(buffer)
-  return result.text.trim()
+  const parser = new PDFParse({ data: buffer })
+  const result = await parser.getText()
+  const text = result.text.trim()
+  if (!text) {
+    throw new Error(
+      'PDF text extraction returned empty content — the file may be scanned, image-only, or encrypted'
+    )
+  }
+  return text
 }
 
 export async function extractText(
@@ -17,5 +19,9 @@ export async function extractText(
   if (mimeType === 'application/pdf') {
     return extractTextFromPdf(buffer)
   }
-  return buffer.toString('utf-8').trim()
+  const text = buffer.toString('utf-8').trim()
+  if (!text) {
+    throw new Error('File text extraction returned empty content')
+  }
+  return text
 }

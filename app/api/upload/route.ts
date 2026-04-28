@@ -30,9 +30,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const arrayBuffer = await file.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
-  const path = await uploadFile(buffer, file.name, file.type)
+  const path = await uploadFile(file, `${Date.now()}-${file.name}`)
 
   return NextResponse.json({ path }, { status: 201 })
 }

@@ -36,10 +36,7 @@ export async function POST(
   }
 
   if (evaluation.sent_at) {
-    return NextResponse.json(
-      { error: 'Email has already been sent' },
-      { status: 400 }
-    )
+    return NextResponse.json({ ok: true })
   }
 
   // Load candidate
@@ -69,6 +66,11 @@ export async function POST(
       sent_at: now,
     })
     .eq('id', evaluation_id)
+
+  await client
+    .from('candidates')
+    .update({ status: 'closed-sent' })
+    .eq('id', id)
 
   await client.from('audit_log').insert({
     candidate_id: id,
