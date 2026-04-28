@@ -20,42 +20,25 @@ function NewCandidateForm() {
   const cvInputRef = useRef<HTMLInputElement>(null)
   const transcriptInputRef = useRef<HTMLInputElement>(null)
 
-  async function uploadFile(file: File): Promise<string> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await apiFetch('/api/upload', { method: 'POST', body: formData })
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error ?? 'Upload failed')
-    }
-    const data = await res.json()
-    return data.path
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!cvFile) {
+      setError('CV is required')
+      return
+    }
     setError('')
     setSubmitting(true)
 
     try {
-      let cvPath: string | null = null
-      let transcriptPath: string | null = null
+      const formData = new FormData()
+      formData.append('role_id', roleId)
+      formData.append('name', name)
+      formData.append('email', email)
+      formData.append('cv', cvFile)
+      if (transcriptFile) formData.append('transcript', transcriptFile)
+      if (recruiterNotes.trim()) formData.append('recruiter_notes', recruiterNotes.trim())
 
-      if (cvFile) cvPath = await uploadFile(cvFile)
-      if (transcriptFile) transcriptPath = await uploadFile(transcriptFile)
-
-      const res = await apiFetch('/api/candidates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role_id: roleId,
-          name,
-          email,
-          cv_path: cvPath,
-          transcript_path: transcriptPath,
-          recruiter_notes: recruiterNotes || null,
-        }),
-      })
+      const res = await apiFetch('/api/candidates', { method: 'POST', body: formData })
 
       if (!res.ok) {
         const data = await res.json()
@@ -72,56 +55,69 @@ function NewCandidateForm() {
 
   return (
     <div>
-      <Link href={roleId ? `/roles/${roleId}` : '/'} className="text-sm text-gray-500 hover:text-gray-900">
+      <Link
+        href={roleId ? `/roles/${roleId}` : '/'}
+        className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 hover:text-foreground transition-colors"
+      >
         ← Back
       </Link>
-      <h1 className="text-xl font-semibold mt-4 mb-6">Add candidate</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
+      <div className="mt-6 mb-8">
+        <p className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-0.5">
+          Candidate
+        </p>
+        <h1 className="text-xl font-semibold">Add candidate</h1>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
         <div>
-          <label className="block text-sm font-medium mb-1">Full name</label>
+          <label className="block text-[11px] font-medium tracking-widests uppercase text-neutral-500 mb-2">
+            Full name
+          </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+            className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
+          <label className="block text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
+            Email
+          </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+            className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
-            CV <span className="text-gray-400 font-normal">— required to generate evaluation</span>
+          <label className="block text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
+            CV <span className="normal-case font-normal tracking-normal">— required to generate evaluation</span>
           </label>
           <button
             type="button"
             onClick={() => cvInputRef.current?.click()}
-            className={`w-full border-2 border-dashed rounded-lg px-4 py-6 text-center transition-colors ${
+            className={`w-full border border-dashed px-4 py-8 text-center transition-colors ${
               cvFile
-                ? 'border-gray-400 bg-gray-50'
-                : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
+                ? 'border-neutral-400 bg-white'
+                : 'border-neutral-300 bg-white hover:border-neutral-400'
             }`}
           >
             {cvFile ? (
               <div>
-                <p className="text-sm font-medium text-gray-900">{cvFile.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">Click to replace</p>
+                <p className="text-sm font-medium">{cvFile.name}</p>
+                <p className="text-xs text-neutral-400 mt-1">Click to replace</p>
               </div>
             ) : (
               <div>
-                <p className="text-sm text-gray-500">Click to upload CV</p>
-                <p className="text-xs text-gray-400 mt-1">PDF or .txt · max 10 MB</p>
+                <p className="text-sm text-neutral-500">Click to upload CV</p>
+                <p className="text-xs text-neutral-400 mt-1">PDF or .txt · max 10 MB</p>
               </div>
             )}
           </button>
@@ -135,27 +131,27 @@ function NewCandidateForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Interview transcript <span className="text-gray-400 font-normal">— optional</span>
+          <label className="block text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
+            Interview transcript <span className="normal-case font-normal tracking-normal">— optional</span>
           </label>
           <button
             type="button"
             onClick={() => transcriptInputRef.current?.click()}
-            className={`w-full border-2 border-dashed rounded-lg px-4 py-6 text-center transition-colors ${
+            className={`w-full border border-dashed px-4 py-8 text-center transition-colors ${
               transcriptFile
-                ? 'border-gray-400 bg-gray-50'
-                : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
+                ? 'border-neutral-400 bg-white'
+                : 'border-neutral-300 bg-white hover:border-neutral-400'
             }`}
           >
             {transcriptFile ? (
               <div>
-                <p className="text-sm font-medium text-gray-900">{transcriptFile.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">Click to replace</p>
+                <p className="text-sm font-medium">{transcriptFile.name}</p>
+                <p className="text-xs text-neutral-400 mt-1">Click to replace</p>
               </div>
             ) : (
               <div>
-                <p className="text-sm text-gray-500">Click to upload interview transcript</p>
-                <p className="text-xs text-gray-400 mt-1">PDF or .txt · Teams/Zoom exports accepted · max 10 MB</p>
+                <p className="text-sm text-neutral-500">Click to upload transcript</p>
+                <p className="text-xs text-neutral-400 mt-1">PDF or .txt · Teams/Zoom exports accepted · max 10 MB</p>
               </div>
             )}
           </button>
@@ -169,25 +165,35 @@ function NewCandidateForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Recruiter notes <span className="text-gray-400 font-normal">(optional)</span></label>
+          <label className="block text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
+            Recruiter notes <span className="normal-case font-normal tracking-normal">— optional</span>
+          </label>
           <textarea
             value={recruiterNotes}
             onChange={(e) => setRecruiterNotes(e.target.value)}
             rows={5}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+            className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors resize-y"
             placeholder="Any observations from the interview..."
           />
         </div>
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-gray-900 text-white text-sm px-5 py-2 rounded hover:bg-gray-700 disabled:opacity-50"
-        >
-          {submitting ? 'Saving...' : 'Save candidate'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-accent text-white text-xs font-medium px-4 py-2 tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {submitting ? 'Uploading and saving...' : 'Save candidate'}
+          </button>
+          <Link
+            href={roleId ? `/roles/${roleId}` : '/'}
+            className="text-xs text-neutral-500 hover:text-foreground transition-colors"
+          >
+            Cancel
+          </Link>
+        </div>
       </form>
     </div>
   )

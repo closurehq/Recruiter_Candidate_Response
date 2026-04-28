@@ -6,18 +6,24 @@ import { apiFetch } from '@/lib/client'
 
 export default function CloseButton({
   candidateId,
-  hasCV,
+  hasCvText,
 }: {
   candidateId: string
-  hasCV: boolean
+  hasCvText: boolean
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleClose() {
-    if (!confirm('Generate evaluation and close this candidate? This cannot be undone.')) return
+  if (!hasCvText) {
+    return (
+      <p className="text-xs text-neutral-400">
+        No CV text available — cannot generate evaluation.
+      </p>
+    )
+  }
 
+  async function handleClose() {
     setError('')
     setLoading(true)
 
@@ -35,24 +41,16 @@ export default function CloseButton({
     router.refresh()
   }
 
-  if (!hasCV) {
-    return (
-      <p className="text-sm text-gray-400">
-        Upload a CV before closing this candidate.
-      </p>
-    )
-  }
-
   return (
     <div>
       <button
         onClick={handleClose}
         disabled={loading}
-        className="bg-gray-900 text-white text-sm px-5 py-2 rounded hover:bg-gray-700 disabled:opacity-50"
+        className="bg-foreground text-white text-xs font-medium px-4 py-2 tracking-wide hover:opacity-80 transition-opacity disabled:opacity-50"
       >
-        {loading ? 'Generating evaluation...' : 'Close candidate'}
+        {loading ? 'Generating evaluation...' : 'Generate evaluation'}
       </button>
-      {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
     </div>
   )
 }

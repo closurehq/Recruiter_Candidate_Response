@@ -19,7 +19,6 @@ export default function LoginPage() {
     setError('')
     setSubmitting(true)
 
-    // POST with empty body — 401 = wrong secret, 400 = secret accepted (validation failed as expected)
     const res = await fetch('/api/roles', {
       method: 'POST',
       headers: {
@@ -41,9 +40,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold mb-1">Closure</h1>
-        <p className="text-sm text-gray-500 mb-6">Enter the admin secret to continue.</p>
+      <div className="w-full max-w-xs">
+        <div className="mb-8">
+          <p className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-0.5">
+            Closure
+          </p>
+          <h1 className="text-xl font-semibold">Sign in</h1>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -52,15 +55,15 @@ export default function LoginPage() {
             onChange={(e) => setSecret(e.target.value)}
             placeholder="Admin secret"
             autoFocus
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+            className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors"
           />
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-xs text-red-600">{error}</p>}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-gray-900 text-white text-sm px-4 py-2 rounded hover:bg-gray-700 disabled:opacity-50"
+            className="w-full bg-accent text-white text-xs font-medium px-4 py-2.5 tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {submitting ? 'Checking...' : 'Sign in'}
           </button>

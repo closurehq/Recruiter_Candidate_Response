@@ -36,43 +36,66 @@ export default function NewRolePage() {
 
   return (
     <div>
-      <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">← Back</Link>
-      <h1 className="text-xl font-semibold mt-4 mb-6">New role</h1>
+      <Link
+        href="/"
+        className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 hover:text-foreground transition-colors"
+      >
+        ← Roles
+      </Link>
 
-      <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
+      <div className="mt-6 mb-8">
+        <p className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-0.5">
+          Closure
+        </p>
+        <h1 className="text-xl font-semibold">New role</h1>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
         <div>
-          <label className="block text-sm font-medium mb-1">Job title</label>
+          <label className="block text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
+            Job title
+          </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+            className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors"
             placeholder="e.g. Senior Product Manager"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Job description</label>
+          <label className="block text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
+            Job description
+          </label>
           <textarea
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             required
-            rows={14}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600 font-mono"
+            rows={16}
+            className="w-full border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors font-mono resize-y"
             placeholder="Paste the full job description here..."
           />
         </div>
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-gray-900 text-white text-sm px-5 py-2 rounded hover:bg-gray-700 disabled:opacity-50"
-        >
-          {submitting ? 'Creating...' : 'Create role'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-accent text-white text-xs font-medium px-4 py-2 tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {submitting ? 'Creating...' : 'Create role'}
+          </button>
+          <Link
+            href="/"
+            className="text-xs text-neutral-500 hover:text-foreground transition-colors"
+          >
+            Cancel
+          </Link>
+        </div>
       </form>
     </div>
   )
