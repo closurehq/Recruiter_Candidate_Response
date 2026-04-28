@@ -52,27 +52,35 @@ export async function POST(
   }
 
   // Extract text from CV
+  console.log('[close] downloading CV:', candidate.cv_path)
   const cvBuffer = await downloadFile(candidate.cv_path)
+  console.log('[close] CV downloaded, bytes:', cvBuffer.length)
   const cvExt = candidate.cv_path.split('.').pop()?.toLowerCase()
   const cvMime = cvExt === 'pdf' ? 'application/pdf' : 'text/plain'
+  console.log('[close] extracting CV text, mime:', cvMime)
   const cvText = await extractText(cvBuffer, cvMime)
+  console.log('[close] CV text extracted, chars:', cvText.length)
 
   // Extract text from transcript if present
   let transcriptText: string | null = null
   if (candidate.transcript_path) {
+    console.log('[close] downloading transcript')
     const tBuffer = await downloadFile(candidate.transcript_path)
     const tExt = candidate.transcript_path.split('.').pop()?.toLowerCase()
     const tMime = tExt === 'pdf' ? 'application/pdf' : 'text/plain'
     transcriptText = await extractText(tBuffer, tMime)
+    console.log('[close] transcript extracted, chars:', transcriptText.length)
   }
 
   // Run agent
+  console.log('[close] calling evaluation agent')
   const result = await runEvaluationAgent({
     jobDescription,
     cvText,
     transcriptText,
     recruiterNotes: candidate.recruiter_notes ?? null,
   })
+  console.log('[close] agent complete')
 
   // Save evaluation
   const { data: evaluation, error: evalError } = await client
