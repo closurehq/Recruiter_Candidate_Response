@@ -5,11 +5,10 @@ import { apiFetch } from '@/lib/client'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
-type EmailProvider = 'gmail-mcp' | 'outlook-mcp' | 'resend'
+type EmailProvider = 'gmail-mcp' | 'resend'
 
 const EMAIL_PROVIDERS: { value: EmailProvider; label: string }[] = [
-  { value: 'gmail-mcp', label: 'Gmail' },
-  { value: 'outlook-mcp', label: 'Outlook' },
+  { value: 'gmail-mcp', label: 'Gmail MCP' },
   { value: 'resend', label: 'Resend' },
 ]
 
@@ -188,7 +187,7 @@ export default function SettingsClient({
           <div className="px-6 py-5 flex items-center gap-4">
             <button
               onClick={saveGreenhouse}
-              disabled={greenhouseStatus === 'saving' || (!apiKey.trim() && !webhookSecret.trim())}
+              disabled={greenhouseStatus === 'saving'}
               className="bg-accent text-white text-xs font-medium px-4 py-2 tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               Save
@@ -245,14 +244,14 @@ export default function SettingsClient({
             </div>
           )}
 
-          {(emailProvider === 'gmail-mcp' || emailProvider === 'outlook-mcp') && (
+          {emailProvider === 'gmail-mcp' && (
             <div className="px-6 py-5">
               <p className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
                 Connection
               </p>
               <p className="text-xs text-neutral-500 leading-relaxed">
-                {emailProvider === 'gmail-mcp' ? 'Gmail' : 'Outlook'} MCP authentication is managed externally
-                via the MCP connector. Ensure the connector is authenticated before sending email through this provider.
+                Gmail MCP authentication is managed externally via the MCP connector.
+                Ensure the connector is authenticated before sending email through this provider.
                 The app will fall back to Resend automatically if authentication fails.
               </p>
             </div>

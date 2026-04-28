@@ -5,7 +5,7 @@ import SettingsClient from './SettingsClient'
 
 export const dynamic = 'force-dynamic'
 
-type EmailProvider = 'gmail-mcp' | 'outlook-mcp' | 'resend'
+type EmailProvider = 'gmail-mcp' | 'resend'
 
 async function getSettings() {
   const client = getServiceClient()
@@ -44,7 +44,7 @@ export default async function SettingsPage() {
       </Link>
 
       <div className="mt-6 mb-8">
-        <p className="text-[11px] font-medium tracking-widests uppercase text-neutral-500 mb-0.5">
+        <p className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-0.5">
           Closure
         </p>
         <h1 className="text-xl font-semibold">Settings</h1>
