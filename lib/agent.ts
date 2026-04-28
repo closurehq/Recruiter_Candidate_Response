@@ -42,7 +42,7 @@ Your job is to produce three outputs:
    - Direct and respectful
    - References at least one specific strength from the evaluation
    - Names the primary gap plainly
-   - No template language. Not "we've decided to move forward with other candidates."
+   - No template language. Not "we've decided to move forward with other candidates." Not "we've decided not to progress your application." If a decision statement is needed, use "After reviewing everything, we don't think this is the right match."
    - Signed off as coming from the recruiter (use "we" not "I")
    - Maximum 150 words
 
