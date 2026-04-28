@@ -9,6 +9,7 @@ export default function AuthGuard() {
 
   useEffect(() => {
     if (pathname === '/login') return
+    if (pathname === '/demo') return
     if (!localStorage.getItem('admin_secret')) {
       router.replace('/login')
     }
