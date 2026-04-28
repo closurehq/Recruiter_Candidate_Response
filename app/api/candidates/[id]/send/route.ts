@@ -53,7 +53,8 @@ export async function POST(
   await sendEmail({
     to: candidate.email,
     subject: 'Update on your application',
-    text: final_message.trim(),
+    body: final_message.trim(),
+    senderName: 'The Recruitment Team',
   })
 
   const now = new Date().toISOString()
