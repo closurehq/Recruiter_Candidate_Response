@@ -9,8 +9,9 @@ Recruiter tool for generating evidenced rejection emails. Recruiter adds a role 
 - **Next.js 16.2.4** — App Router, Turbopack, TypeScript, Tailwind CSS v4
 - **Supabase** — Postgres (roles, candidates, evaluations, audit_log) + Storage bucket `candidate-files`
 - **Anthropic** — `claude-sonnet-4-5`, evaluation agent in `lib/agent.ts`
-- **Resend** — email delivery, send-only key, `lib/email.ts`
-- **pdf-parse v1** — CV/transcript text extraction, `lib/pdf.ts`. Must stay on v1 — v2 is a browser-first rewrite that references `DOMMatrix` and other browser-only APIs, causing a `ReferenceError` in Vercel's Node.js serverless runtime.
+- **Resend** — email delivery fallback, send-only key, `lib/email.ts`
+- **Gmail MCP** — primary email delivery path when `settings.email_provider = 'gmail-mcp'`. Connector at `https://gmailmcp.googleapis.com/mcp/v1` (JSON-RPC 2.0). Requires `settings.gmail_oauth_token`. Falls back to Resend automatically on auth failure.
+- **pdf-parse v2** — CV/transcript text extraction, `lib/pdf.ts`. Uses `PDFParse` class: `new PDFParse({ data: buffer })` then `.getText()`. Do not use the default import pattern or `new PDFParse()` with no arguments.
 
 ## Architecture
 
@@ -39,7 +40,7 @@ lib/
   auth.ts       requireAdmin() — checks x-admin-secret header
   client.ts     apiFetch() — injects admin_secret from localStorage
   agent.ts      runEvaluationAgent() — Claude API, returns evaluation/evidence/draft
-  email.ts      sendEmail() — Resend
+  email.ts      sendEmail(EmailInput) → EmailResult — Gmail MCP primary, Resend fallback
   upload.ts     uploadFile / downloadFile / deleteFile — Supabase Storage
   pdf.ts        extractText() — pdf-parse (PDF) or utf-8 (plain text)
 ```
@@ -47,13 +48,23 @@ lib/
 ## Database schema
 
 ```sql
-roles        (id, title, job_description, created_at)
-candidates   (id, role_id, name, email, cv_path, transcript_path,
-              recruiter_notes, status[active|closed], created_at)
+roles        (id, title, job_description, greenhouse_job_id[bigint,unique], created_at)
+candidates   (id, role_id, name, email,
+              cv_path, cv_text,
+              transcript_path, transcript_text,
+              recruiter_notes,
+              status[active|pending-review|closed-pending|closed-sent],
+              greenhouse_candidate_id[bigint], greenhouse_application_id[bigint,unique],
+              created_at)
 evaluations  (id, candidate_id, evaluation_text, evidence_statement,
               draft_message, final_message, approved_at, sent_at, created_at)
 audit_log    (id, candidate_id, event, detail, created_at)
+settings     (id, key[unique], value, updated_at)
 ```
+
+Key `settings` rows:
+- `email_provider` — `'resend'` (default) or `'gmail-mcp'`
+- `gmail_oauth_token` — required when `email_provider = 'gmail-mcp'`
 
 Storage bucket: `candidate-files` (private, service role only)
 
@@ -73,6 +84,7 @@ Flat shared secret. `ADMIN_SECRET` env var is injected as `x-admin-secret` heade
 | `RESEND_FROM_EMAIL` | Verified sender address |
 | `ADMIN_SECRET` | Flat admin auth secret |
 | `CRON_SECRET` | Vercel cron auth — `Authorization: Bearer` header on purge route |
+| `GREENHOUSE_WEBHOOK_SECRET` | Greenhouse webhook HMAC secret — required for `/api/webhooks/greenhouse` |
 
 ## Cron
 
