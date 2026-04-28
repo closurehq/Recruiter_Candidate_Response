@@ -19,9 +19,5 @@ export async function extractText(
   if (mimeType === 'application/pdf') {
     return extractTextFromPdf(buffer)
   }
-  const text = buffer.toString('utf-8').trim()
-  if (!text) {
-    throw new Error('File text extraction returned empty content')
-  }
-  return text
+  return buffer.toString('utf-8').trim()
 }
