@@ -83,13 +83,22 @@ Flat shared secret. `ADMIN_SECRET` env var is injected as `x-admin-secret` heade
 ```bash
 npm run dev        # dev server (Turbopack)
 npm run build      # production build
+npm test           # run unit tests (vitest)
 npx tsc --noEmit   # type check
 ```
 
-## Known gaps
+## Tests
 
-- **`getAnonClient()`** in `lib/supabase.ts` is exported but never called anywhere. Dead code until a public-facing feature is added.
-- **No test suite** — no test framework is configured. No unit or integration tests exist.
+Vitest, node environment. 14 tests across 3 files in `test/`.
+
+| File | What it covers |
+|---|---|
+| `test/auth.test.ts` | `requireAdmin` — correct secret, wrong secret, missing header, unset env var |
+| `test/pdf.test.ts` | `extractText` plain text path — content, trimming, empty input, internal newlines |
+| `test/agent.test.ts` | Agent JSON parsing and field validation — valid response, each missing field, empty string fields, invalid JSON |
+
+PDF extraction tests cover the plain text branch only. The PDF branch (`application/pdf`) requires a real PDF buffer and is exercised end-to-end via the close flow.
+
 
 ## Conventions
 
