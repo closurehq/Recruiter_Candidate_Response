@@ -1,97 +1,174 @@
 # Closure
 
-Closure is a lightweight tool that helps recruiters send specific, evidenced rejection emails to candidates they have already interviewed. The recruiter uploads the CV, transcript, and notes; an AI agent evaluates the candidate against the role and produces a draft rejection with a statement of evidence; the recruiter approves before anything sends.
-
-**What this does not solve:** post-client-meeting ghosting, where the hold-up is the client not the recruiter. That is a different and harder problem that this tool does not attempt to address.
+A tool for recruiters who want to tell candidates why they didn't get the job.
 
 ---
 
-## Stack and why
+## What this is
 
-| Layer | Choice | Why |
-|---|---|---|
-| Framework | Next.js 14 (App Router) | Server components for data fetching, API routes for back-end logic, single deploy unit |
-| Database | Supabase (Postgres) | Managed Postgres with storage and EU region support. Schema is plain SQL — portable to any Postgres DB |
-| AI | Anthropic Claude (claude-sonnet-4-5) | Structured JSON output, strong instruction following, DPA in place |
-| Email | Resend | Simple API, reliable deliverability, easy to swap |
-| File storage | Supabase Storage | Co-located with DB, avoids a third service |
-| Auth | Single ADMIN_SECRET header | Sufficient for single-user MVP. See below for upgrade path |
-
-### Swapping parts
-
-**Email:** Replace `lib/email.ts`. The `sendEmail({ to, subject, text })` interface is the only surface area. Drop in any provider (SendGrid, Postmark, nodemailer) without touching routes or UI.
-
-**Database:** The schema in `supabase/schema.sql` is standard Postgres. Point `NEXT_PUBLIC_SUPABASE_URL` at any Postgres-compatible host and update the client in `lib/supabase.ts`.
-
-**Auth:** Replace the `requireAdmin` check in `lib/auth.ts` with Supabase Auth or NextAuth. No UI changes required beyond adding a login page.
+Candidates who reach the interview stage deserve a specific, honest response when they don't get the role. Most don't get one — not because recruiters are indifferent, but because writing 30 individual emails a month, each grounded in the actual interview and job requirements, is genuinely hard to do at volume. Closure is a small internal tool that makes it possible. The recruiter adds a role and its job description, adds each candidate with their CV and any interview notes, and triggers an AI evaluation. The AI reads all the inputs, assesses the gap between what the role required and what the candidate demonstrated, cites specific evidence from the documents, and drafts a rejection email in plain language. The recruiter reads the draft, edits it freely, approves it, and sends it. The email that arrives in the candidate's inbox is specific to them — it names what was strong, names what was missing, and says why, without euphemism or filler.
 
 ---
 
-## Setup
+## What it does not solve
 
-### 1. Supabase project
+Closure handles the recruiter-to-candidate communication stage: where the recruiter owns the relationship and has the information needed to give honest feedback. It does not help with the post-client-meeting stage, where a candidate has met the hiring manager and the recruiter is now waiting on feedback from someone else. That is a different and harder problem — one of internal process and client management, not tooling. Closure does not touch it.
 
-Create a Supabase project in an **EU region** (required for GDPR).
+---
 
-Run `supabase/schema.sql` in the Supabase SQL editor.
+## How it works
 
-Create a storage bucket named `candidate-files` (private, not public) via the Supabase dashboard or:
-```sql
-insert into storage.buckets (id, name, public) values ('candidate-files', 'candidate-files', false);
-```
+Each evaluation draws on up to four inputs:
 
-### 2. Environment variables
+1. **Job description** — the full brief for the role, added once when the role is created
+2. **CV** — uploaded as PDF or plain text when the candidate is added
+3. **Interview transcript** — optional; Teams and Zoom exports work
+4. **Recruiter notes** — anything observed during the interview that isn't in the transcript
 
-Copy `.env.local` and fill in the values:
+The AI reads all four and produces three outputs:
 
-```
-NEXT_PUBLIC_SUPABASE_URL=        # Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Supabase anon key
-SUPABASE_SERVICE_ROLE_KEY=       # Supabase service role key (server only)
-ANTHROPIC_API_KEY=               # Anthropic API key
-RESEND_API_KEY=                  # Resend API key
-RESEND_FROM_EMAIL=               # Verified sender address in Resend
-ADMIN_SECRET=                    # Any strong random string — sent as x-admin-secret header
-CRON_SECRET=                     # Any strong random string — used to authenticate the purge cron
-```
+- **Assessment** — a plain-language account of the gap between the role requirements and the candidate's demonstrated background. Not a performance review; a specific explanation of the mismatch.
+- **Evidence statement** — the specific moments or details from the CV and transcript that informed the assessment. This is what makes the feedback credible rather than generic.
+- **Draft email** — written from the evidence. It does not use phrases like "we've decided to move forward with other candidates" or "we wish you well in your search." It names what the role needed, what was strong, and what the gap was.
 
-### 3. Run locally
+The recruiter reads the draft, edits it, and clicks send. Nothing goes out without human approval.
+
+---
+
+## Greenhouse integration
+
+If your firm runs on Greenhouse, Closure connects via webhook so candidates flow in automatically on rejection — no manual data entry.
+
+When a candidate is rejected in Greenhouse, the webhook fires and Closure automatically:
+
+- Fetches the candidate's name, email address, and CV from the Harvest API
+- Fetches the job title and description from the Harvest API
+- Fetches recruiter notes from the application activity feed
+- Downloads the CV file immediately to its own storage (Greenhouse attachment URLs expire after 7 days — Closure downloads on receipt so the file is always available for evaluation)
+- Creates the role and candidate records, setting status to pending review
+
+**To connect:**
+
+1. In Closure, go to **Settings → Greenhouse integration**. Copy the webhook endpoint URL shown there.
+2. In Greenhouse: **Settings → Dev Center → Web Hooks → Create webhook**. Set the trigger to **Candidate/Prospect Rejected**. Paste the endpoint URL as the endpoint. Enter a secret key and paste the same value into the **Webhook secret key** field in Closure's settings.
+3. In Greenhouse: **Settings → Dev Center → Harvest API Keys**. Create a key with read access. Paste it into the **Harvest API key** field in Closure's settings and save.
+
+From this point, any candidate rejected in Greenhouse will appear in Closure as pending review, with all available documents attached.
+
+---
+
+## Email delivery
+
+Closure supports two delivery paths:
+
+**Gmail or Outlook via MCP** — the email sends from the recruiter's own address, using their authenticated session. It appears in the recruiter's sent folder. This is the recommended option for agencies where the recruiter relationship matters. Configure in **Settings → Email delivery**, then ensure the MCP connector is authenticated separately.
+
+**Resend** — a transactional email API. Useful if MCP is not configured or as a fallback. Emails send from a verified sender address set in the `RESEND_FROM_EMAIL` environment variable. If Gmail or Outlook MCP is selected but authentication fails at send time, Closure falls back to Resend automatically.
+
+The active provider is configured in **Settings → Email delivery**.
+
+---
+
+## Stack
+
+- **Next.js 16** (App Router) — server components for data fetching, API routes for all writes, single deploy unit. Hosted on Vercel.
+- **Supabase** — managed Postgres for structured data, Storage for CV and transcript files. Chosen for the service role client pattern, which keeps all database access server-side, and for EU region hosting.
+- **Anthropic Claude API** (`claude-sonnet-4-5`) — evaluation generation. Chosen for reliable instruction-following on structured JSON output and for the availability of a Data Processing Agreement.
+- **Resend** — transactional email fallback. Send-only API key; no inbound or list management surface.
+
+The storage layer (`uploadFile`, `deleteFile`, `downloadFile` in `lib/upload.ts`) and the email layer (`sendEmail` in `lib/email.ts`) are each behind a single interface. Swapping the underlying provider — different storage backend, different email API — means changing one file.
+
+---
+
+## Self-hosting
+
+**Prerequisites:** Node.js 18+, a Supabase project, a Vercel account, an Anthropic API key.
+
+**1. Clone and install**
 
 ```bash
+git clone https://github.com/closurehq/Recruiter_Candidate_Response.git
+cd Recruiter_Candidate_Response
 npm install
-npm run dev
 ```
 
-The app opens at `http://localhost:3000`. All API calls require the `x-admin-secret` header. The UI reads this from `localStorage` under the key `admin_secret` — set it once in the browser console:
+**2. Configure environment variables**
 
-```js
-localStorage.setItem('admin_secret', 'your-admin-secret-value')
+Copy the example file and fill in values:
+
+```bash
+cp .env.local.example .env.local
 ```
 
-### 4. Deploy to Vercel
+| Variable | Required | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (server-side only) |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
+| `ADMIN_SECRET` | Yes | Any strong random string — used to authenticate the UI |
+| `RESEND_API_KEY` | If using Resend | Resend send-only API key |
+| `RESEND_FROM_EMAIL` | If using Resend | Verified sender address |
+| `CRON_SECRET` | If deploying to Vercel | Authenticates the daily purge cron |
+| `GREENHOUSE_WEBHOOK_SECRET` | If using Greenhouse | HMAC secret for webhook validation |
+
+**3. Run the schema**
+
+In your Supabase project, open the SQL editor and run the migration files from `supabase/migrations/` in filename order.
+
+**4. Create the storage bucket**
+
+In your Supabase project, go to **Storage** and create a bucket named `candidate-files`. Set it to **private** — no public access.
+
+**5. Deploy to Vercel**
 
 ```bash
 npx vercel
 ```
 
-Set all environment variables in the Vercel project settings. Add `CRON_SECRET` as well.
+Add all environment variables from step 2 to the Vercel project settings, then redeploy:
 
-The `vercel.json` configures a daily cron at 03:00 UTC that hard-deletes candidates older than 90 days.
+```bash
+npx vercel --prod
+```
+
+**6. Sign in**
+
+Navigate to your deployment URL. Enter the value you set for `ADMIN_SECRET`. This is stored in your browser's `localStorage` and sent as a header with every API request.
+
+The daily purge cron (`GET /api/cron/purge`, 02:00 UTC) requires Vercel Cron, which is available on paid plans.
 
 ---
 
 ## GDPR
 
-**Data stored:** candidate name, email, CV text path, transcript text path, recruiter notes, AI-generated evaluation, draft and final rejection message, audit events.
+**What personal data is stored:** candidate name, email address, CV text and file, interview transcript text and file, recruiter notes, AI-generated evaluation and evidence statement, draft and final rejection message, audit log entries.
 
-**Retention:** candidates and all associated data are hard-deleted after 90 days via the `/api/cron/purge` endpoint, triggered daily by Vercel Cron.
+**Retention:** all candidate data is hard-deleted 90 days after the candidate record is created. This includes database rows and storage files. The deletion is automated via the daily purge cron and requires no manual intervention.
 
-**Third parties:**
-- **Anthropic** — candidate CV text, transcript text, recruiter notes, and job description are sent to the Anthropic API to generate the evaluation. This is covered by Anthropic's Data Processing Addendum (DPA). No data is used for model training under the DPA.
-- **Resend** — candidate email address and the final rejection message text are sent to Resend for delivery.
-- **Supabase** — all structured data and file storage. Use an EU region to keep data in the EU.
+**Third parties who receive personal data:**
 
-**No candidate personal data is logged to the console or external services** beyond Supabase and Resend.
+| Party | Data shared | Basis |
+|---|---|---|
+| Anthropic | CV text, transcript text, recruiter notes, job description | Evaluation generation. Covered by Anthropic's Data Processing Agreement at [anthropic.com/legal/dpa](https://www.anthropic.com/legal/dpa). Data is not used for model training under the DPA. |
+| Resend | Candidate email address, email body | Delivery of the rejection email, if Resend is the configured provider. |
+| Greenhouse | None sent — data is fetched from Greenhouse, not transmitted to it | N/A |
+
+**Roles:** the recruiter or agency operating this tool is the data controller. This software is the processor. If you are processing candidate personal data through this tool, you need a lawful basis (legitimate interest in running a fair recruitment process is the most commonly applicable basis for post-interview rejection communication). A data processing agreement should be in place with any third parties listed above.
+
+This is not legal advice. If you are unsure of your obligations under UK GDPR, GDPR, or equivalent legislation, speak to a data protection professional.
+
+---
+
+## Contributing
+
+Pull requests are welcome. Areas where contributions would be most useful:
+
+- **ATS connectors** — Lever, Teamtailor, Recruitee, Workable. The Greenhouse integration in `app/api/webhooks/greenhouse/route.ts` is the reference implementation.
+- **Email MCP connectors** — additional providers beyond Gmail and Outlook.
+- **Multi-user support** — the current auth model is a single shared secret. An org layer with individual accounts and role-based access would make this usable by larger teams.
+
+Please open an issue before starting significant work so the approach can be discussed first.
 
 ---
 
