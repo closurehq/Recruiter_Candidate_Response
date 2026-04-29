@@ -85,11 +85,10 @@ ${recruiterNotes?.trim() || 'Not provided.'}`
 
   const rawText = content.text.trim()
 
-  // Strip markdown code fences the model occasionally adds despite instructions
-  const jsonText = rawText
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '')
-    .trim()
+  // Extract the JSON object regardless of surrounding text or code fences
+  const start = rawText.indexOf('{')
+  const end = rawText.lastIndexOf('}')
+  const jsonText = start !== -1 && end !== -1 ? rawText.slice(start, end + 1) : rawText
 
   let parsed: AgentOutput
   try {
