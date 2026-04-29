@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { runEvaluationAgent } from '@/lib/agent'
 import { extractText } from '@/lib/pdf'
 
+export const maxDuration = 60
+
 // In-memory rate limiter — 5 requests per IP per hour.
 // Note: resets on cold start and is per-instance on multi-region deploys.
 // Sufficient for a demo endpoint.
@@ -94,12 +96,19 @@ export async function POST(req: NextRequest) {
     transcriptText = await extractText(transcriptBuffer, transcriptFile.type) || null
   }
 
-  const result = await runEvaluationAgent({
-    jobDescription,
-    cvText,
-    transcriptText,
-    recruiterNotes: interviewNotes,
-  })
+  let result
+  try {
+    result = await runEvaluationAgent({
+      jobDescription,
+      cvText,
+      transcriptText,
+      recruiterNotes: interviewNotes,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[demo/evaluate] agent error:', message)
+    return NextResponse.json({ error: 'Failed to generate response. Please try again.' }, { status: 500 })
+  }
 
   // No database writes — demo evaluations are ephemeral
   return NextResponse.json({
