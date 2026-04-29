@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const jobDescription = (formData.get('job_description') as string | null)?.trim() ?? ''
   const cvFile = formData.get('cv') as File | null
+  const transcriptFile = formData.get('transcript') as File | null
   const interviewNotes = (formData.get('interview_notes') as string | null)?.trim() || null
 
   if (!jobDescription) {
@@ -78,10 +79,25 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  let transcriptText: string | null = null
+  if (transcriptFile) {
+    if (!ALLOWED_TYPES.includes(transcriptFile.type)) {
+      return NextResponse.json(
+        { error: 'Transcript must be a PDF or plain text file' },
+        { status: 400 }
+      )
+    }
+    if (transcriptFile.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'Transcript file size exceeds 10 MB' }, { status: 400 })
+    }
+    const transcriptBuffer = Buffer.from(await transcriptFile.arrayBuffer())
+    transcriptText = await extractText(transcriptBuffer, transcriptFile.type) || null
+  }
+
   const result = await runEvaluationAgent({
     jobDescription,
     cvText,
-    transcriptText: null,
+    transcriptText,
     recruiterNotes: interviewNotes,
   })
 

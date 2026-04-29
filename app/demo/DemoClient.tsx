@@ -17,9 +17,11 @@ type State =
 export default function DemoClient() {
   const [jobDescription, setJobDescription] = useState('')
   const [cvFile, setCvFile] = useState<File | null>(null)
+  const [transcriptFile, setTranscriptFile] = useState<File | null>(null)
   const [interviewNotes, setInterviewNotes] = useState('')
   const [state, setState] = useState<State>({ phase: 'idle' })
   const cvInputRef = useRef<HTMLInputElement>(null)
+  const transcriptInputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
 
   async function handleGenerate() {
@@ -32,6 +34,9 @@ export default function DemoClient() {
       const formData = new FormData()
       formData.append('job_description', jobDescription.trim())
       formData.append('cv', cvFile)
+      if (transcriptFile) {
+        formData.append('transcript', transcriptFile)
+      }
       if (interviewNotes.trim()) {
         formData.append('interview_notes', interviewNotes.trim())
       }
@@ -119,6 +124,44 @@ export default function DemoClient() {
               type="file"
               accept=".pdf,.txt,text/plain,application/pdf"
               onChange={(e) => setCvFile(e.target.files?.[0] ?? null)}
+              className="hidden"
+            />
+          </div>
+
+          {/* Transcript upload */}
+          <div>
+            <label className="block text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-2">
+              Interview transcript <span className="normal-case font-normal tracking-normal">— optional</span>
+            </label>
+            {transcriptFile ? (
+              <div className="w-full border border-dashed border-neutral-400 bg-white px-4 py-8 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{transcriptFile.name}</p>
+                  <p className="text-xs text-neutral-400 mt-1">PDF or .txt</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTranscriptFile(null)}
+                  className="text-xs text-neutral-400 hover:text-foreground transition-colors ml-4"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => transcriptInputRef.current?.click()}
+                className="w-full border border-dashed border-neutral-300 bg-white px-4 py-8 text-center hover:border-neutral-400 transition-colors"
+              >
+                <p className="text-sm text-neutral-500">Click to upload interview transcript</p>
+                <p className="text-xs text-neutral-400 mt-1">PDF or .txt · max 10 MB</p>
+              </button>
+            )}
+            <input
+              ref={transcriptInputRef}
+              type="file"
+              accept=".pdf,.txt,text/plain,application/pdf"
+              onChange={(e) => setTranscriptFile(e.target.files?.[0] ?? null)}
               className="hidden"
             />
           </div>
