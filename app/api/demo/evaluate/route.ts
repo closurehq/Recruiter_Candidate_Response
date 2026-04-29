@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runEvaluationAgent } from '@/lib/agent'
 import { extractText } from '@/lib/pdf'
+import { stripPII } from '@/lib/pii'
 
 export const maxDuration = 60
 
@@ -101,11 +102,11 @@ export async function POST(req: NextRequest) {
       console.log('[demo/evaluate] transcript extracted, chars:', transcriptText?.length ?? 0)
     }
 
-    console.log('[demo/evaluate] calling agent')
+    // PII stripped before sending to Anthropic API — see lib/pii.ts for redaction rules
     const result = await runEvaluationAgent({
       jobDescription,
-      cvText,
-      transcriptText,
+      cvText: stripPII(cvText),
+      transcriptText: transcriptText ? stripPII(transcriptText) : null,
       recruiterNotes: interviewNotes,
     })
     console.log('[demo/evaluate] agent complete')

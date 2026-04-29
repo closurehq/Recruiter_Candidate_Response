@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { BANNED_PHRASES, BANNED_CONSTRUCTIONS } from './banned-phrases'
+import { stripPII } from './pii'
 
 const client = new Anthropic()
 
@@ -60,14 +61,18 @@ export async function runEvaluationAgent(input: AgentInput): Promise<AgentOutput
     throw new Error('CV text is required for evaluation')
   }
 
+  // PII stripped before sending to Anthropic API — see lib/pii.ts for redaction rules
+  const safeCvText = stripPII(cvText)
+  const safeTranscriptText = transcriptText ? stripPII(transcriptText) : null
+
   const userMessage = `JOB DESCRIPTION:
 ${jobDescription}
 
 CV:
-${cvText}
+${safeCvText}
 
 INTERVIEW TRANSCRIPT:
-${transcriptText?.trim() || 'Not provided.'}
+${safeTranscriptText?.trim() || 'Not provided.'}
 
 RECRUITER NOTES:
 ${recruiterNotes?.trim() || 'Not provided.'}`
