@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
+      'pdf-parse': path.resolve(__dirname, '__mocks__/pdf-parse.js'),
     },
   },
 })
