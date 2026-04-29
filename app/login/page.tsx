@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -39,10 +40,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-xs">
+    <div className="flex justify-center pt-[20vh]">
+      <div className="w-full max-w-[400px]">
         <div className="mb-8">
-          <h1 className="text-xl font-semibold">Sign in</h1>
+          <p className="text-[11px] font-medium tracking-widest uppercase text-neutral-500 mb-1">
+            Closure
+          </p>
+          <h1 className="text-xl font-semibold mb-4">
+            Candidate response, done properly.
+          </h1>
+          <p className="text-sm text-neutral-500 leading-relaxed mb-3">
+            Closure helps recruiters send specific, evidenced responses to every candidate they
+            interview. No templates. No ghosting.
+          </p>
+          <p className="text-sm text-neutral-500 leading-relaxed">
+            Not a recruiter?{' '}
+            <Link href="/demo" className="text-accent hover:underline">
+              Try the demo
+            </Link>{' '}
+            to see what a good rejection email looks like.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
