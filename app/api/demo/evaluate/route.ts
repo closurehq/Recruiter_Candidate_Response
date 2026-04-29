@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.log('[demo/evaluate] parsing form data')
     const formData = await req.formData()
     const jobDescription = (formData.get('job_description') as string | null)?.trim() ?? ''
     const cvFile = formData.get('cv') as File | null
@@ -74,7 +73,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'CV file size exceeds 10 MB' }, { status: 400 })
     }
 
-    console.log('[demo/evaluate] extracting CV text, type:', cvFile.type, 'size:', cvFile.size)
+    // Files are read into memory only — no Supabase storage writes at any point in this route
     const cvBuffer = Buffer.from(await cvFile.arrayBuffer())
     const cvText = await extractText(cvBuffer, cvFile.type)
 
@@ -84,7 +83,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    console.log('[demo/evaluate] CV extracted, chars:', cvText.length)
 
     let transcriptText: string | null = null
     if (transcriptFile) {
@@ -99,7 +97,6 @@ export async function POST(req: NextRequest) {
       }
       const transcriptBuffer = Buffer.from(await transcriptFile.arrayBuffer())
       transcriptText = await extractText(transcriptBuffer, transcriptFile.type) || null
-      console.log('[demo/evaluate] transcript extracted, chars:', transcriptText?.length ?? 0)
     }
 
     // PII stripped before sending to Anthropic API — see lib/pii.ts for redaction rules
@@ -109,9 +106,9 @@ export async function POST(req: NextRequest) {
       transcriptText: transcriptText ? stripPII(transcriptText) : null,
       recruiterNotes: interviewNotes,
     })
-    console.log('[demo/evaluate] agent complete')
 
-    // No database writes — demo evaluations are ephemeral
+    // No Supabase writes — demo sessions are fully ephemeral.
+    // Uploaded files never leave this function's memory and are discarded on return.
     return NextResponse.json({
       evaluation: result.evaluation,
       evidence_statement: result.evidence_statement,
